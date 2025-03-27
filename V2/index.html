@@ -205,7 +205,6 @@
     </div>
 
     <script>
-        // Classe WeatherCard pour créer des cartes météorologiques
         class WeatherCard {
             constructor(data, additionalInfos) {
                 this.data = data;
@@ -232,7 +231,6 @@
                 tempContainer.appendChild(tempMaxItem);
                 card.appendChild(tempContainer);
 
-                // Informations supplémentaires
                 const additionalContainer = document.createElement('div');
                 additionalContainer.classList.add('details');
 
@@ -284,7 +282,6 @@
             const weatherForm = document.getElementById('weatherForm');
             const weatherCards = document.getElementById('weatherCards');
 
-            // Chargement des communes par code postal
             postalCodeInput.addEventListener('input', async (e) => {
                 const postalCode = e.target.value;
                 if (postalCode.length === 5) {
@@ -308,26 +305,21 @@
                 }
             });
 
-            // Soumission du formulaire
             weatherForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
-                // Récupérer les valeurs du formulaire
                 const communeCode = communeSelect.value;
                 const forecastDays = document.getElementById('forecastDays').value;
                 const additionalInfos = Array.from(
                     document.querySelectorAll('input[name="additionalInfo"]:checked')
                 ).map(checkbox => checkbox.value);
 
-                // Effacer les cartes précédentes
                 weatherCards.innerHTML = '';
 
                 try {
-                    // Requête API (Remplacer par vos vraies clés d'API)
                     const meteoResponse = await fetch(`https://api.meteo-concept.com/api/forecast/daily?token=974bc36ca010cfac6a694cd4e022fd4774b8c4a7786a1fd7e3d81e9bd60d37a3&insee=${communeCode}&days=${forecastDays}`);
                     const meteoData = await meteoResponse.json();
 
-                    // Créer une carte par jour
                     meteoData.forecast.forEach(dayData => {
                         const card = new WeatherCard(dayData, additionalInfos);
                         weatherCards.appendChild(card.render());
