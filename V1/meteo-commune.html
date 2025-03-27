@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Météo par Commune</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #ecf0f1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #communeSelect {
+            display: none;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        #meteoResults {
+            margin-top: 20px;
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 4px;
+        }
+
+        @media screen and (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Météo par Commune</h1>
+        
+        <form id="weatherForm" aria-labelledby="formTitle">
+            <div class="form-group">
+                <label for="postalCode">Code Postal</label>
+                <input 
+                    type="text" 
+                    id="postalCode" 
+                    name="postalCode" 
+                    pattern="[0-9]{5}" 
+                    required 
+                    placeholder="Ex: 75001"
+                    aria-describedby="postalCodeHint"
+                >
+                <small id="postalCodeHint">Saisissez un code postal français à 5 chiffres</small>
+            </div>
+
+            <div class="form-group">
+                <label for="communeSelect">Commune</label>
+                <select 
+                    id="communeSelect" 
+                    name="commune" 
+                    required
+                    aria-describedby="communeHint"
+                >
+                    <option value="">Sélectionnez une commune</option>
+                </select>
+                <small id="communeHint">Choisissez une commune après avoir saisi le code postal</small>
+            </div>
+
+            <button type="submit" aria-label="Obtenir les informations météorologiques">
+                Rechercher la météo
+            </button>
+        </form>
+
+        <div id="meteoResults" aria-live="polite" hidden>
+            <h2 id="resultTitle"></h2>
+            <div class="result-item">
+                <span>Température minimale</span>
+                <strong id="tempMin"></strong>
+            </div>
+            <div class="result-item">
+                <span>Température maximale</span>
+                <strong id="tempMax"></strong>
+            </div>
+            <div class="result-item">
+                <span>Probabilité de pluie</span>
+                <strong id="rainProbability"></strong>
+            </div>
+            <div class="result-item">
+                <span>Heures d'ensoleillement</span>
+                <strong id="sunHours"></strong>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const postalCodeInput = document.getElementById('postalCode');
+            const communeSelect = document.getElementById('communeSelect');
+            const weatherForm = document.getElementById('weatherForm');
+            const meteoResults = document.getElementById('meteoResults');
+            const resultTitle = document.getElementById('resultTitle');
+            const tempMin = document.getElementById('tempMin');
+            const tempMax = document.getElementById('tempMax');
+            const rainProbability = document.getElementById('rainProbability');
+            const sunHours = document.getElementById('sunHours');
+
+            postalCodeInput.addEventListener('input', async (e) => {
+                const postalCode = e.target.value;
+                if (postalCode.length === 5) {
+                    try {
+                        const communesResponse = await fetch(`https://geo.api.gouv.fr/communes?codePostal=${postalCode}`);
+                        const communes = await communesResponse.json();
+
+                        communeSelect.innerHTML = '<option value="">Sélectionnez une commune</option>';
+                        communes.forEach(commune => {
+                            const option = document.createElement('option');
+                            option.value = commune.code;
+                            option.textContent = commune.nom;
+                            communeSelect.appendChild(option);
+                        });
+
+                        communeSelect.style.display = 'block';
+                    } catch (error) {
+                        console.error('Erreur lors de la récupération des communes', error);
+                        alert('Impossible de charger les communes. Vérifiez votre connexion.');
+                    }
+                }
+            });
+
+            weatherForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const communeCode = communeSelect.value;
+
+                try {
+                    const meteoResponse = await fetch(`https://api.meteo-concept.com/api/forecast/daily?token=974bc36ca010cfac6a694cd4e022fd4774b8c4a7786a1fd7e3d81e9bd60d37a3&insee=${communeCode}`);
+                    const meteoData = await meteoResponse.json();
+                    const dailyForecast = meteoData.forecast[0];
+
+                    resultTitle.textContent = `Météo pour ${communeSelect.options[communeSelect.selectedIndex].text}`;
+                    tempMin.textContent = `${dailyForecast.tmin}°C`;
+                    tempMax.textContent = `${dailyForecast.tmax}°C`;
+                    rainProbability.textContent = `${dailyForecast.probarain}%`;
+                    sunHours.textContent = `${dailyForecast.sun_hours} heures`;
+
+                    meteoResults.hidden = false;
+                } catch (error) {
+                    console.error('Erreur lors de la récupération des données météo', error);
+                    alert('Impossible de charger les données météorologiques. Réessayez plus tard.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
