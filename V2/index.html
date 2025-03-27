@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Météo Détaillée par Commune</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #ecf0f1;
+            --card-background: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #communeSelect {
+            display: none;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        #weatherCards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .weather-card {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px;
+            text-align: center;
+        }
+
+        .weather-card h2 {
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+        }
+
+        .weather-card .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .weather-card .detail-item {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        @media screen and (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Météo Détaillée par Commune</h1>
+        
+        <form id="weatherForm">
+            <div class="form-group">
+                <label for="postalCode">Code Postal</label>
+                <input 
+                    type="text" 
+                    id="postalCode" 
+                    name="postalCode" 
+                    pattern="[0-9]{5}" 
+                    required 
+                    placeholder="Ex: 75001"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="communeSelect">Commune</label>
+                <select 
+                    id="communeSelect" 
+                    name="commune" 
+                    required
+                >
+                    <option value="">Sélectionnez une commune</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="forecastDays">Nombre de jours de prévision</label>
+                <select id="forecastDays" name="forecastDays">
+                    <option value="1">1 jour</option>
+                    <option value="2">2 jours</option>
+                    <option value="3">3 jours</option>
+                    <option value="4">4 jours</option>
+                    <option value="5">5 jours</option>
+                    <option value="6">6 jours</option>
+                    <option value="7">7 jours</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Informations supplémentaires</label>
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" name="additionalInfo" value="latitude"> 
+                        Latitude
+                    </label>
+                    <label>
+                        <input type="checkbox" name="additionalInfo" value="longitude"> 
+                        Longitude
+                    </label>
+                    <label>
+                        <input type="checkbox" name="additionalInfo" value="rainfall"> 
+                        Cumul de pluie
+                    </label>
+                    <label>
+                        <input type="checkbox" name="additionalInfo" value="windSpeed"> 
+                        Vitesse du vent
+                    </label>
+                    <label>
+                        <input type="checkbox" name="additionalInfo" value="windDirection"> 
+                        Direction du vent
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit">Rechercher la météo</button>
+        </form>
+
+        <div id="weatherCards"></div>
+    </div>
+
+    <script>
+        // Classe WeatherCard pour créer des cartes météorologiques
+        class WeatherCard {
+            constructor(data, additionalInfos) {
+                this.data = data;
+                this.additionalInfos = additionalInfos;
+            }
+
+            render() {
+                const card = document.createElement('div');
+                card.classList.add('weather-card');
+
+                // Titre de la carte (date)
+                const title = document.createElement('h2');
+                title.textContent = this.formatDate(this.data.datetime);
+                card.appendChild(title);
+
+                // Températures
+                const tempContainer = document.createElement('div');
+                tempContainer.classList.add('details');
+                
+                const tempMinItem = this.createDetailItem('Temp. Min', `${this.data.tmin}°C`);
+                const tempMaxItem = this.createDetailItem('Temp. Max', `${this.data.tmax}°C`);
+                
+                tempContainer.appendChild(tempMinItem);
+                tempContainer.appendChild(tempMaxItem);
+                card.appendChild(tempContainer);
+
+                // Informations supplémentaires
+                const additionalContainer = document.createElement('div');
+                additionalContainer.classList.add('details');
+
+                this.additionalInfos.forEach(info => {
+                    switch(info) {
+                        case 'latitude':
+                            additionalContainer.appendChild(this.createDetailItem('Latitude', this.data.latitude.toFixed(4)));
+                            break;
+                        case 'longitude':
+                            additionalContainer.appendChild(this.createDetailItem('Longitude', this.data.longitude.toFixed(4)));
+                            break;
+                        case 'rainfall':
+                            additionalContainer.appendChild(this.createDetailItem('Cumul Pluie', `${this.data.rr}mm`));
+                            break;
+                        case 'windSpeed':
+                            additionalContainer.appendChild(this.createDetailItem('Vent', `${this.data.wind10m}km/h`));
+                            break;
+                        case 'windDirection':
+                            additionalContainer.appendChild(this.createDetailItem('Dir. Vent', `${this.data.dirwind10m}°`));
+                            break;
+                    }
+                });
+
+                card.appendChild(additionalContainer);
+
+                return card;
+            }
+
+            createDetailItem(label, value) {
+                const item = document.createElement('div');
+                item.classList.add('detail-item');
+                item.innerHTML = `<strong>${label}</strong><br>${value}`;
+                return item;
+            }
+
+            formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('fr-FR', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long' 
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const postalCodeInput = document.getElementById('postalCode');
+            const communeSelect = document.getElementById('communeSelect');
+            const weatherForm = document.getElementById('weatherForm');
+            const weatherCards = document.getElementById('weatherCards');
+
+            // Chargement des communes par code postal
+            postalCodeInput.addEventListener('input', async (e) => {
+                const postalCode = e.target.value;
+                if (postalCode.length === 5) {
+                    try {
+                        const communesResponse = await fetch(`https://geo.api.gouv.fr/communes?codePostal=${postalCode}`);
+                        const communes = await communesResponse.json();
+
+                        communeSelect.innerHTML = '<option value="">Sélectionnez une commune</option>';
+                        communes.forEach(commune => {
+                            const option = document.createElement('option');
+                            option.value = commune.code;
+                            option.textContent = commune.nom;
+                            communeSelect.appendChild(option);
+                        });
+
+                        communeSelect.style.display = 'block';
+                    } catch (error) {
+                        console.error('Erreur lors de la récupération des communes', error);
+                        alert('Impossible de charger les communes. Vérifiez votre connexion.');
+                    }
+                }
+            });
+
+            // Soumission du formulaire
+            weatherForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                // Récupérer les valeurs du formulaire
+                const communeCode = communeSelect.value;
+                const forecastDays = document.getElementById('forecastDays').value;
+                const additionalInfos = Array.from(
+                    document.querySelectorAll('input[name="additionalInfo"]:checked')
+                ).map(checkbox => checkbox.value);
+
+                // Effacer les cartes précédentes
+                weatherCards.innerHTML = '';
+
+                try {
+                    // Requête API (Remplacer par vos vraies clés d'API)
+                    const meteoResponse = await fetch(`https://api.meteo-concept.com/api/forecast/daily?token=974bc36ca010cfac6a694cd4e022fd4774b8c4a7786a1fd7e3d81e9bd60d37a3&insee=${communeCode}&days=${forecastDays}`);
+                    const meteoData = await meteoResponse.json();
+
+                    // Créer une carte par jour
+                    meteoData.forecast.forEach(dayData => {
+                        const card = new WeatherCard(dayData, additionalInfos);
+                        weatherCards.appendChild(card.render());
+                    });
+
+                } catch (error) {
+                    console.error('Erreur lors de la récupération des données météo', error);
+                    alert('Impossible de charger les données météorologiques. Réessayez plus tard.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
